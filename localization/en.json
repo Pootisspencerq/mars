@@ -1,0 +1,22 @@
+{
+    "title": "Mars Colony",
+    "new_game": "New Game",
+    "continue": "Continue",
+    "exit": "Exit",
+
+    "turn": "Next Turn",
+    "menu": "Menu",
+
+    "win": "You survived!",
+    "lose": "Colony failed",
+
+    "build_solar": "Solar",
+    "build_water": "Water",
+    "build_oxygen": "Oxygen",
+    "build_mine": "Mine",
+
+    "upgrade": "Upgrade",
+
+    "save": "Save",
+    "load": "Load"
+}
