@@ -10,6 +10,11 @@
     "win": "You survived!",
     "lose": "Colony failed",
 
+    "save": "Save",
+    "load": "Load",
+    "saved": "Game saved",
+    "loaded": "Game loaded",
+
     "build_solar": "Solar",
     "build_water": "Water",
     "build_oxygen": "Oxygen",
@@ -17,6 +22,21 @@
 
     "upgrade": "Upgrade",
 
-    "save": "Save",
-    "load": "Load"
+    "energy": "E",
+    "water": "W",
+    "oxygen": "O",
+    "materials": "M",
+    "population": "Pop",
+    "turn_short": "Turn",
+
+    "err_occupied": "Cell occupied",
+    "err_materials": "Not enough materials",
+    "err_upgrade": "Can't upgrade",
+
+    "built": "Built",
+    "upgraded": "Upgraded",
+
+    "event_storm": "⚡ Solar storm!",
+    "event_meteor": "☄️ Meteor strike!",
+    "event_bonus": "🎁 Found water!"
 }
