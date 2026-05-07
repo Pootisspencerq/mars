@@ -1,18 +1,132 @@
+# =====================
+# SPACE COLONY AI
+# FULL GAME + TRANSLATIONS + SOUND + SAVE + FIXED UI
+# =====================
+
 import tkinter as tk
 from tkinter import messagebox
-import random, json, os
-from localization.lang import LANG
+import os
+import random
+import pygame
+from save_system import save_game, load_game
+
+# =====================
+# SOUND SYSTEM
+# =====================
+
+try:
+    pygame.mixer.init()
+except:
+    print("Sound disabled")
+
+SOUND_VOLUME = 0.5
+SOUND_MUTED = False
+
+
+def set_volume(v):
+    global SOUND_VOLUME
+    SOUND_VOLUME = float(v)
+
+
+def toggle_mute():
+    global SOUND_MUTED
+    SOUND_MUTED = not SOUND_MUTED
+
+
+def play_sound(name):
+    if SOUND_MUTED:
+        return
+    try:
+        path = f"assets/{name}.wav"
+        if os.path.exists(path):
+            s = pygame.mixer.Sound(path)
+            s.set_volume(SOUND_VOLUME)
+            s.play()
+    except:
+        pass
+
+
+# =====================
+# TRANSLATIONS
+# =====================
+
+LANG = "en"
+
+TEXT = {
+    "en": {
+        "title": "SPACE COLONY AI",
+        "actions": "ACTIONS",
+        "upgrade": "UPGRADE",
+        "next": "NEXT TURN",
+        "mute": "MUTE",
+        "event": "Event",
+        "lang": "LANG",
+        "win": "YOU WIN",
+        "lose": "YOU LOSE",
+        "sound": "SOUND",
+        "save": "SAVE",
+        "load": "CONTINUE"
+    },
+    "ua": {
+        "title": "КОСМІЧНА КОЛОНІЯ AI",
+        "actions": "ДІЇ",
+        "upgrade": "ПОКРАЩЕННЯ",
+        "next": "ХІД",
+        "mute": "ЗВУК ВИКЛ",
+        "event": "Подія",
+        "lang": "МОВА",
+        "win": "ТИ ПЕРЕМІГ",
+        "lose": "ТИ ПРОГРАВ",
+        "sound": "ЗВУК",
+        "save": "ЗБЕРЕГТИ",
+        "load": "ПРОДОВЖИТИ"
+    },
+    "es": {
+        "title": "COLONIA ESPACIAL AI",
+        "actions": "ACCIONES",
+        "upgrade": "MEJORAR",
+        "next": "SIGUIENTE TURNO",
+        "mute": "MUTE",
+        "event": "Evento",
+        "lang": "IDIOMA",
+        "win": "GANASTE",
+        "lose": "PERDISTE",
+        "sound": "SONIDO",
+        "save": "GUARDAR",
+        "load": "CONTINUAR"
+    }
+}
+
+
+def t(key):
+    return TEXT[LANG].get(key, key)
+
+
+def switch_lang():
+    global LANG
+    LANG = "ua" if LANG == "en" else "es" if LANG == "ua" else "en"
+
+
+# =====================
+# SETTINGS
+# =====================
 
 MAP_SIZE = 5
-TARGET_TURNS = 30
-SAVE_FILE = "save.json"
 
 BUILD = {
-    "S": ("☀️", 15, "energy"),
-    "W": ("💧", 20, "water"),
-    "O": ("🌿", 20, "oxygen"),
-    "M": ("⛏️", 25, "materials")
+    "S": ("☀️", 15, "energy", "#facc15"),
+    "W": ("💧", 20, "water", "#38bdf8"),
+    "O": ("🌿", 20, "oxygen", "#4ade80"),
+    "M": ("⛏️", 25, "materials", "#94a3b8")
 }
+
+EVENTS = [
+    ("calm", "Nothing happens", {}),
+    ("tornado", "Tornado hits", {"materials": -10}),
+    ("storm", "Storm", {"energy": -20}),
+    ("meteor", "Meteor", {"materials": -30, "energy": -10}),
+]
+
 
 # =====================
 # STATE
@@ -23,39 +137,28 @@ class Cell:
         self.t = t
         self.l = l
 
-    def to_dict(self):
-        return {"t": self.t, "l": self.l}
-
-    @staticmethod
-    def from_dict(d):
-        return Cell(d["t"], d["l"])
-
 
 class GameState:
-
     def __init__(self):
         self.reset()
-    
+        self.diff_mult = 1.0
+
+    def set_difficulty(self, difficulty):
+        self.diff_mult = {"easy": 0.7, "hard": 1.5}.get(difficulty, 1.0)
+
     def reset(self):
-        self.res = {"energy":120,"water":120,"oxygen":120,"materials":120}
+        self.res = {
+            "energy": 120,
+            "water": 120,
+            "oxygen": 120,
+            "materials": 120
+        }
         self.population = 10
         self.turn = 0
+        self.last_event = "calm"
+        self.game_over = False
         self.map = [[Cell() for _ in range(MAP_SIZE)] for _ in range(MAP_SIZE)]
-        self.map[2][2] = Cell("H",1)
-
-    def to_dict(self):
-        return {
-            "res": self.res,
-            "population": self.population,
-            "turn": self.turn,
-            "map": [[c.to_dict() for c in row] for row in self.map]
-        }
-
-    def load_dict(self, d):
-        self.res = d["res"]
-        self.population = d["population"]
-        self.turn = d["turn"]
-        self.map = [[Cell.from_dict(c) for c in row] for row in d["map"]]
+        self.map[2][2] = Cell("H", 1)
 
 
 # =====================
@@ -63,319 +166,247 @@ class GameState:
 # =====================
 
 class GameEngine:
-    def __init__(self, state, scene):
+    def __init__(self, state):
         self.state = state
-        self.scene = scene
+
+    def set_difficulty(self, difficulty):
+        self.state.set_difficulty(difficulty)
+
+    def apply_event(self):
+        name, desc, effects = random.choice(EVENTS)
+        self.state.last_event = desc
+        play_sound("event")
+
+        for k, v in effects.items():
+            self.state.res[k] = self.state.res.get(k, 0) + v
 
     def build(self, x, y, b):
         c = self.state.map[x][y]
         if c.t != ".":
-            return LANG.t("err_occupied")
+            return
 
-        _, cost, _ = BUILD[b]
+        _, cost, prod, _ = BUILD[b]
         if self.state.res["materials"] < cost:
-            return LANG.t("err_materials")
+            return
 
         self.state.res["materials"] -= cost
-        self.state.map[x][y] = Cell(b,1)
-        return LANG.t("built")
+        self.state.map[x][y] = Cell(b, 1)
+        play_sound("build")
 
     def upgrade(self, x, y):
         c = self.state.map[x][y]
-        if c.t in [".","H"]:
-            return LANG.t("err_upgrade")
+        if c.t in [".", "H"]:
+            return
 
         cost = 10 * c.l
         if self.state.res["materials"] < cost:
-            return LANG.t("err_materials")
+            return
 
         self.state.res["materials"] -= cost
         c.l += 1
-        return LANG.t("upgraded")
+        play_sound("upgrade")
 
     def next_turn(self):
-        for row in self.state.map:
+        s = self.state
+
+        for row in s.map:
             for c in row:
                 if c.t in BUILD:
-                    _,_,prod = BUILD[c.t]
-                    self.state.res[prod] += 10 * c.l
+                    _, _, prod, _ = BUILD[c.t]
+                    s.res[prod] += 5 + c.l * 3
 
-        pop = self.state.population
-        mult = self.scene.mult
+        pop = s.population
+        mult = s.diff_mult
 
-        self.state.res["energy"] -= int(2 * pop * mult)
-        self.state.res["water"] -= int(pop * mult)
-        self.state.res["oxygen"] -= int(pop * mult)
+        s.res["energy"] -= int(2 * pop * mult)
+        s.res["water"] -= int(pop * mult)
+        s.res["oxygen"] -= int(pop * mult)
 
-        if self.state.res["oxygen"] > 50:
-            self.state.population += 1
+        if s.res["oxygen"] > 50:
+            s.population += 1
 
-        event = ""
-        if random.random() < self.scene.event_chance:
-            e = random.choice(["storm","meteor","bonus"])
+        if random.random() < 0.3:
+            self.apply_event()
 
-            if e == "storm":
-                self.state.res["energy"] -= 15
-                event = LANG.t("event_storm")
-
-            elif e == "meteor":
-                self.state.res["materials"] -= 20
-                event = LANG.t("event_meteor")
-
-            elif e == "bonus":
-                self.state.res["water"] += 20
-                event = LANG.t("event_bonus")
-
-        self.state.turn += 1
-        return event
+        s.turn += 1
 
 
 # =====================
-# GAME SCENE
+# UI
 # =====================
 
 class GameScene(tk.Frame):
-        # ===== DIFFICULTY =====
-    def set_difficulty(self, diff):
-        self.difficulty = diff
+    def set_difficulty(self, difficulty):
+        self.state.set_difficulty(difficulty)
+        self.engine.set_difficulty(difficulty)
+        self.update_ui()
+    def __init__(self, master):
+        super().__init__(master, bg="#0b1220")
 
-        if diff == "easy":
-            self.state.res = {
-                "energy":150,
-                "water":150,
-                "oxygen":150,
-                "materials":150
-            }
-            self.mult = 0.7
-            self.event_chance = 0.1
-
-        elif diff == "normal":
-            self.state.res = {
-                "energy":120,
-                "water":120,
-                "oxygen":120,
-                "materials":120
-            }
-            self.mult = 1.0
-            self.event_chance = 0.25
-
-        elif diff == "hard":
-            self.state.res = {
-                "energy":80,
-                "water":80,
-                "oxygen":80,
-                "materials":80
-            }
-            self.mult = 1.5
-            self.event_chance = 0.4
-    def __init__(self, master, switch):
-        super().__init__(master)
-
-        self.switch = switch
         self.state = GameState()
-
-        self.mult = 1.0
-        self.event_chance = 0.25
-
-        self.engine = GameEngine(self.state, self)
+        self.engine = GameEngine(self.state)
 
         self.mode = "build"
         self.selected = None
 
-        self.base_font = 10
-        self.ui_scale = 1.0
+        self.grid_columnconfigure(0, weight=4)
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_rowconfigure(0, weight=1)
 
-        self.configure(bg="#1e1e1e")
+        # LEFT
+        self.left = tk.Frame(self, bg="#0b1220")
+        self.left.grid(row=0, column=0, sticky="nsew")
 
-        # ===== TOP HUD =====
-        self.top = tk.Frame(self, bg="#111")
-        self.top.pack(fill="x")
+        # TOP BAR
+        self.topbar = tk.Frame(self.left, bg="#111827", height=50)
+        self.topbar.pack(fill="x")
 
-        self.hud = tk.Frame(self.top, bg="#111")
-        self.hud.pack(pady=5)
+        self.title = tk.Label(self.topbar, text=t("title"),
+                              fg="white", bg="#111827",
+                              font=("Segoe UI", 16, "bold"))
+        self.title.pack(side="left", padx=10)
 
-        def make_item(icon):
-            f = tk.Frame(self.hud, bg="#222", padx=6, pady=3)
-            f.pack(side="left", padx=4)
-            tk.Label(f, text=icon, bg="#222", fg="white").pack(side="left")
-            val = tk.Label(f, text="0", bg="#222", fg="white")
-            val.pack(side="left")
-            return val
+        tk.Button(self.topbar, text="🌐",
+                  command=lambda: (switch_lang(), self.refresh())).pack(side="right")
 
-        self.h_energy = make_item("⚡")
-        self.h_water = make_item("💧")
-        self.h_oxygen = make_item("🌿")
-        self.h_mat = make_item("⛏")
-        self.h_pop = make_item("👥")
-        self.h_turn = make_item("⏱")
+        # HUD
+        self.hud = tk.Label(self.left, bg="#0f172a", fg="white")
+        self.hud.pack(fill="x")
 
-        # ===== MAIN =====
-        main = tk.Frame(self, bg="#1e1e1e")
-        main.pack(expand=True, fill="both")
+        self.event_label = tk.Label(self.left, bg="#0b1220", fg="gray")
+        self.event_label.pack()
 
-        self.grid_frame = tk.Frame(main, bg="#1e1e1e")
-        self.grid_frame.pack(side="left", expand=True, fill="both")
+        # GRID
+        self.grid_frame = tk.Frame(self.left, bg="#111827")
+        self.grid_frame.pack(expand=True, fill="both")
 
         self.buttons = []
-
-        for i in range(MAP_SIZE):
-            row = []
-            for j in range(MAP_SIZE):
-                b = tk.Button(self.grid_frame, bg="#2d2d2d", fg="white", relief="flat")
-                b.grid(row=i, column=j, sticky="nsew", padx=1, pady=1)
-
-                b.config(command=lambda x=i,y=j:self.click(x,y))
-
-                b.bind("<Enter>", lambda e: e.widget.config(bg="#666"))
-                b.bind("<Leave>", lambda e: e.widget.config(bg="#2d2d2d"))
-
-                row.append(b)
-            self.buttons.append(row)
-
         for i in range(MAP_SIZE):
             self.grid_frame.rowconfigure(i, weight=1)
             self.grid_frame.columnconfigure(i, weight=1)
 
-        # ===== BOTTOM =====
-        self.bottom = tk.Frame(self, bg="#111")
-        self.bottom.pack(fill="x")
+            row = []
+            for j in range(MAP_SIZE):
+                b = tk.Button(self.grid_frame, text="",
+                              command=lambda x=i, y=j: self.click(x, y))
+                b.grid(row=i, column=j, sticky="nsew")
+                row.append(b)
+            self.buttons.append(row)
 
-        self.build_buttons = {}
+        # RIGHT
+        self.right = tk.Frame(self, bg="#0f172a")
+        self.right.grid(row=0, column=1, sticky="nsew")
 
-        for b in BUILD:
-            btn = tk.Button(self.bottom, text=BUILD[b][0], bg="#333", fg="white",
-                            command=lambda x=b:self.select(x))
-            btn.pack(side="left", padx=2)
-            self.build_buttons[b] = btn
+        tk.Label(self.right, text=t("actions"), bg="#0f172a", fg="white").pack()
 
-        self.upgrade_btn = tk.Button(self.bottom, text="⬆️", command=self.set_upgrade)
-        self.upgrade_btn.pack(side="left", padx=2)
+        for k in BUILD:
+            tk.Button(self.right, text=k,
+                      command=lambda x=k: self.select(x)).pack(fill="x")
 
-        self.turn_btn = tk.Button(self.bottom, text="⏭", command=self.next_turn)
-        self.turn_btn.pack(side="right", padx=5)
+        tk.Button(self.right, text=t("upgrade"),
+                  command=self.set_upgrade).pack(fill="x")
 
-        # STATUS
-        self.status = tk.Label(self, fg="white", bg="#000")
-        self.status.pack(fill="x")
+        tk.Button(self.right, text=t("next"),
+                  command=self.next_turn).pack(fill="x")
 
-        self.bind("<Configure>", self.on_resize)
+        # SAVE / LOAD
+        tk.Button(self.right, text=t("save"),
+                  command=self.save).pack(fill="x")
 
-        self.pulse_turn_button()
+        tk.Button(self.right, text=t("load"),
+                  command=self.load).pack(fill="x")
+
+        master.bind("<Key>", self.key)
+
         self.update_ui()
 
-    # ===== ANIMATIONS =====
-    def animate_click(self, btn):
-        orig = btn["bg"]
-        btn.config(bg="#999")
-        self.after(100, lambda: btn.config(bg=orig))
+    # =====================
+    # SAVE / LOAD FIXED
+    # =====================
 
-    def animate_build(self, btn, color):
-        btn.config(bg="#000")
-        self.after(120, lambda: btn.config(bg=color))
-
-    def animate_status(self, color):
-        self.status.config(bg=color)
-        self.after(200, lambda: self.status.config(bg="#000"))
-
-    def pulse_turn_button(self):
-        def pulse():
-            self.turn_btn.config(bg="#666")
-            self.after(300, lambda: self.turn_btn.config(bg="#333"))
-            self.after(700, pulse)
-        pulse()
-
-    # ===== SCALING =====
-    def on_resize(self, event):
-        scale = min(event.width / 1000, event.height / 700)
-        scale = max(0.6, min(scale, 1.8))
-
-        if abs(scale - self.ui_scale) < 0.05:
+    def save(self):
+        save_game(self.state, self.engine, LANG)
+    def load(self):
+        data = load_game()
+        if not data:
             return
 
-        self.ui_scale = scale
-        self.apply_scale()
+        self.state.res = data["res"]
+        self.state.population = data["population"]
+        self.state.turn = data["turn"]
+        self.state.last_event = data["last_event"]
+        self.state.game_over = data["game_over"]
+        self.state.diff_mult = data["diff_mult"]
 
-    def apply_scale(self):
-        size = int(self.base_font * self.ui_scale)
+        global LANG
+        LANG = data.get("lang", "en")
 
-        for row in self.buttons:
-            for b in row:
-                b.config(font=("Arial", size))
+        # restore map
+        for i in range(MAP_SIZE):
+            for j in range(MAP_SIZE):
+                t, l = data["map"][i][j]
+                self.state.map[i][j].t = t
+                self.state.map[i][j].l = l
 
-        for b in self.build_buttons.values():
-            b.config(font=("Arial", size))
+        self.update_ui()
 
-        self.upgrade_btn.config(font=("Arial", size))
-        self.turn_btn.config(font=("Arial", size))
-        self.status.config(font=("Arial", size))
+        self.state.res = data["res"]
+        self.state.population = data["population"]
+        self.state.turn = data["turn"]
 
-    # ===== GAME =====
+        for i in range(MAP_SIZE):
+            for j in range(MAP_SIZE):
+                t, l = data["map"][i][j]
+                self.state.map[i][j].t = t
+                self.state.map[i][j].l = l
+
+            self.update_ui()
+
+    # =====================
+    # CORE
+    # =====================
+
     def select(self, b):
-        self.mode = "build"
         self.selected = b
+        self.mode = "build"
+        play_sound("click")
 
     def set_upgrade(self):
         self.mode = "upgrade"
+        play_sound("click")
 
     def click(self, x, y):
-        btn = self.buttons[x][y]
-        self.animate_click(btn)
+        if self.state.game_over:
+            return
 
         if self.mode == "build" and self.selected:
-            msg = self.engine.build(x,y,self.selected)
-        else:
-            msg = self.engine.upgrade(x,y)
+            self.engine.build(x, y, self.selected)
+        elif self.mode == "upgrade":
+            self.engine.upgrade(x, y)
 
-        c = self.state.map[x][y]
-
-        if c.t in BUILD:
-            self.animate_build(btn, "#3a3a3a")
-
-        self.status.config(text=msg)
         self.update_ui()
 
     def next_turn(self):
-        event = self.engine.next_turn()
-
-        if "storm" in event.lower():
-            self.animate_status("#550000")
-        elif "bonus" in event.lower():
-            self.animate_status("#003300")
-
-        if self.state.turn >= TARGET_TURNS:
-            messagebox.showinfo("Win", LANG.t("win"))
-            self.switch("menu")
-            return
-
-        if any(v <= 0 for v in self.state.res.values()):
-            messagebox.showerror("Lose", LANG.t("lose"))
-            self.switch("menu")
-            return
-
-        self.status.config(text=event)
+        self.engine.next_turn()
         self.update_ui()
 
-    # ===== UI =====
+    def key(self, e):
+        if e.keysym == "Return":
+            self.next_turn()
+
+    def refresh(self):
+        self.title.config(text=t("title"))
+
+    # =====================
+    # UI
+    # =====================
+
     def update_ui(self):
+        r = self.state.res
+
+        self.hud.config(text=f"⚡ {r['energy']} 💧 {r['water']} 🌿 {r['oxygen']} ⛏ {r['materials']} 👥 {self.state.population}")
+        self.event_label.config(text=f"{t('event')}: {self.state.last_event}")
+
         for i in range(MAP_SIZE):
             for j in range(MAP_SIZE):
-                c = self.state.map[i][j]
-
-                color = {
-                    "S":"#FFD54F",
-                    "W":"#4FC3F7",
-                    "O":"#81C784",
-                    "M":"#B0BEC5",
-                    "H":"#555"
-                }.get(c.t, "#2d2d2d")
-
-                icon = BUILD[c.t][0] if c.t in BUILD else ("🏠" if c.t=="H" else "")
-                self.buttons[i][j].config(text=icon, bg=color)
-
-        r = self.state.res
-        self.h_energy.config(text=r["energy"])
-        self.h_water.config(text=r["water"])
-        self.h_oxygen.config(text=r["oxygen"])
-        self.h_mat.config(text=r["materials"])
-        self.h_pop.config(text=self.state.population)
-        self.h_turn.config(text=f"{self.state.turn}/{TARGET_TURNS}")
+                self.buttons[i][j].config(text=self.state.map[i][j].t)

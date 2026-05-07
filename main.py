@@ -1,6 +1,7 @@
 import tkinter as tk
 from ui.menu_scene import MenuScene
 from ui.game_scene import GameScene
+from ui.cutscene import Cutscene
 from state import STATE
 
 
@@ -8,18 +9,13 @@ class App:
     def __init__(self, root):
         self.root = root
 
-        # ===== WINDOW SETTINGS =====
         root.title("Mars Colony")
-
-        # 🔥 стартовий розмір + мінімальний
         root.geometry("1000x700")
         root.minsize(800, 600)
 
-        # 🔥 дозволяє нормальний ресайз
         root.rowconfigure(0, weight=1)
         root.columnconfigure(0, weight=1)
 
-        # 🔥 fullscreen toggle (F11)
         root.bind("<F11>", self.toggle_fullscreen)
         root.bind("<Escape>", self.exit_fullscreen)
 
@@ -27,14 +23,16 @@ class App:
 
         # ===== SCENES =====
         self.menu = MenuScene(root, self.switch)
-        self.game = GameScene(root, self.switch)
+        self.game = GameScene(root)
+        self.cutscene = Cutscene(root, self.switch)
 
-        # щоб меню могло оновлювати гру
         root.game = self.game
 
         self.current = None
-        self.switch("menu")
-    
+
+        # старт з катсцени
+        self.switch("cutscene")
+
     # ===== FULLSCREEN =====
     def toggle_fullscreen(self, event=None):
         self.fullscreen = not self.fullscreen
@@ -44,31 +42,27 @@ class App:
         self.fullscreen = False
         self.root.attributes("-fullscreen", False)
 
-    # ===== SCENE SWITCH =====
+    # ===== SWITCH =====
     def switch(self, scene, fresh=False, difficulty="normal"):
         if self.current:
             self.current.pack_forget()
 
-        if scene == "menu":
+        if scene == "cutscene":
+            self.current = self.cutscene
+
+        elif scene == "menu":
             self.current = self.menu
 
         else:
-            if fresh:
-                print("Reset game")
-
-                STATE.reset()
-                self.game.state.reset()
-
-                # 🔥 встановлюємо складність
-                self.game.set_difficulty(difficulty)
-
             self.current = self.game
 
-            # 🔥 адаптивність
+            if fresh:
+                STATE.reset()
+                self.game.state.reset()
+                self.game.set_difficulty(difficulty)
+
             self.current.pack(fill="both", expand=True)
-
             self.game.update_ui()
-
             return
 
         self.current.pack(fill="both", expand=True)
@@ -77,5 +71,5 @@ class App:
 # ===== RUN =====
 if __name__ == "__main__":
     root = tk.Tk()
-    app = App(root)
+    App(root)
     root.mainloop()

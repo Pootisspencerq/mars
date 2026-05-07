@@ -1,80 +1,131 @@
 import tkinter as tk
 from localization.lang import LANG
 
+
 class MenuScene(tk.Frame):
     def __init__(self, master, switch):
         super().__init__(master)
+        self.master = master
         self.switch = switch
 
-        # ===== TITLE =====
-        self.title = tk.Label(self, font=("Arial", 18))
-        self.title.pack(pady=20)
+        self.configure(bg="#020617")
 
-        # ===== DIFFICULTY =====
+        # =====================
+        # CENTER CONTAINER
+        # =====================
+        self.container = tk.Frame(self, bg="#020617")
+        self.container.place(relx=0.5, rely=0.5, anchor="center")
+
+        # =====================
+        # TITLE
+        # =====================
+        self.title = tk.Label(
+            self.container,
+            font=("Segoe UI", 28, "bold"),
+            fg="white",
+            bg="#020617"
+        )
+        self.title.pack(pady=(0, 20))
+
+        # =====================
+        # DIFFICULTY
+        # =====================
+        diff_card = tk.Frame(self.container, bg="#0f172a", padx=20, pady=15)
+        diff_card.pack(pady=10)
+
         self.diff_var = tk.StringVar(value="normal")
 
-        diff_frame = tk.Frame(self)
-        diff_frame.pack(pady=10)
-
-        self.diff_label = tk.Label(diff_frame)
-        self.diff_label.pack()
-
-        self.rb_easy = tk.Radiobutton(
-            diff_frame,
-            variable=self.diff_var,
-            value="easy"
+        self.diff_label = tk.Label(
+            diff_card,
+            fg="white",
+            bg="#0f172a",
+            font=("Segoe UI", 12, "bold")
         )
-        self.rb_easy.pack(anchor="w")
+        self.diff_label.pack(anchor="w", pady=(0, 10))
 
-        self.rb_normal = tk.Radiobutton(
-            diff_frame,
-            variable=self.diff_var,
-            value="normal"
-        )
-        self.rb_normal.pack(anchor="w")
+        def radio(text, value):
+            return tk.Radiobutton(
+                diff_card,
+                text=text,
+                variable=self.diff_var,
+                value=value,
+                indicatoron=0,
+                width=20,
+                pady=6,
+                font=("Segoe UI", 11),
+                bg="#1e293b",
+                fg="white",
+                selectcolor="#334155",
+                activebackground="#334155",
+                relief="flat"
+            )
 
-        self.rb_hard = tk.Radiobutton(
-            diff_frame,
-            variable=self.diff_var,
-            value="hard"
-        )
-        self.rb_hard.pack(anchor="w")
+        self.rb_easy = radio("", "easy")
+        self.rb_normal = radio("", "normal")
+        self.rb_hard = radio("", "hard")
 
-        # ===== BUTTONS =====
-        self.btn_new = tk.Button(
-            self,
-            command=lambda: self.switch("game", True, self.diff_var.get())
-        )
-        self.btn_new.pack(pady=5)
+        self.rb_easy.pack(pady=3)
+        self.rb_normal.pack(pady=3)
+        self.rb_hard.pack(pady=3)
 
-        self.btn_continue = tk.Button(
-            self,
-            command=lambda: self.switch("game", False, self.diff_var.get())
-        )
-        self.btn_continue.pack(pady=5)
+        # =====================
+        # BUTTONS
+        # =====================
+        def btn(text, cmd, color):
+            return tk.Button(
+                self.container,
+                text=text,
+                command=cmd,
+                font=("Segoe UI", 13, "bold"),
+                bg=color,
+                fg="white",
+                activebackground=color,
+                relief="flat",
+                padx=20,
+                pady=10,
+                cursor="hand2"
+            )
 
-        # ===== LANGUAGE =====
-        lang_frame = tk.Frame(self)
-        lang_frame.pack(pady=10)
+        self.btn_new = btn("", lambda: self.switch("game", True, self.diff_var.get()), "#2563eb")
+        self.btn_new.pack(pady=8, fill="x")
 
-        tk.Button(lang_frame, text="EN", command=lambda: self.set_lang("en")).pack(side="left")
-        tk.Button(lang_frame, text="UA", command=lambda: self.set_lang("uk")).pack(side="left")
+        self.btn_continue = btn("", lambda: self.switch("game", False, self.diff_var.get()), "#475569")
+        self.btn_continue.pack(pady=5, fill="x")
 
-        self.update_text()
+        # =====================
+        # LANGUAGE
+        # =====================
+        lang_frame = tk.Frame(self.container, bg="#020617")
+        lang_frame.pack(pady=15)
 
-    # ===== LANGUAGE SWITCH =====
+        tk.Button(lang_frame, text="EN", command=lambda: self.set_lang("en"),
+                  bg="#1e293b", fg="white", width=5).pack(side="left", padx=5)
+
+        tk.Button(lang_frame, text="UA", command=lambda: self.set_lang("uk"),
+                  bg="#1e293b", fg="white", width=5).pack(side="left", padx=5)
+
+        self.refresh()
+
+    # =====================
+    # LANGUAGE CHANGE
+    # =====================
     def set_lang(self, lang):
         LANG.set(lang)
-        self.update_text()
+        self.refresh()
 
-        if hasattr(self.master, "game"):
-            self.master.game.update_texts()
+        # 🔥 важливо: оновити гру якщо вона існує
+        if hasattr(self.master, "game") and self.master.game:
+            if hasattr(self.master.game, "refresh"):
+                self.master.game.refresh()
 
-    # ===== UPDATE TEXT =====
-    def update_text(self):
+    # =====================
+    # FULL UI REFRESH (FIX)
+    # =====================
+    def refresh(self):
         t = LANG.t
 
         self.title.config(text=t("title"))
+
         self.btn_new.config(text=t("new_game"))
         self.btn_continue.config(text=t("continue"))
 
