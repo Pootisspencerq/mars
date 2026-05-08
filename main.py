@@ -3,6 +3,7 @@ from ui.menu_scene import MenuScene
 from ui.game_scene import GameScene
 from ui.cutscene import Cutscene
 from state import STATE
+from audio import play_music, stop_music
 
 
 class App:
@@ -21,53 +22,40 @@ class App:
 
         self.fullscreen = False
 
-        # ===== SCENES =====
-        self.menu = MenuScene(root, self.switch)
-        self.game = GameScene(root, self.switch)
-        self.cutscene = Cutscene(root, self.switch)
-
-        root.game = self.game
-        root.switch = self.switch
         self.current = None
 
-        # старт з катсцени
+        # scenes are NOT pre-created (important!)
+        self.menu = None
+        self.game = None
+        self.cutscene = None
+
         self.switch("cutscene")
 
-    # ===== FULLSCREEN =====
-    def toggle_fullscreen(self, event=None):
-        self.fullscreen = not self.fullscreen
-        self.root.attributes("-fullscreen", self.fullscreen)
-
-    def exit_fullscreen(self, event=None):
-        self.fullscreen = False
-        self.root.attributes("-fullscreen", False)
-
-    # ===== SWITCH =====
+    # =====================
+    # MAIN SWITCH (FIXED)
+    # =====================
     def switch(self, scene, fresh=False, difficulty="normal"):
 
         if self.current:
-            self.current.pack_forget()
+            self.current.destroy()
 
         if scene == "cutscene":
-
+            self.cutscene = Cutscene(self.root, self.switch)
             self.current = self.cutscene
 
         elif scene == "menu":
-
+            self.menu = MenuScene(self.root, self.switch)
             self.current = self.menu
+            play_music("menu")
 
         elif scene == "game":
 
-            if fresh or not hasattr(self, "game"):
-
+            if fresh or not self.game:
                 self.game = GameScene(self.root, self.switch)
-                self.root.game = self.game
+                STATE.reset()
 
             self.current = self.game
-
-            if fresh:
-                STATE.reset()
-                self.game.state.reset()
+            play_music("game")
 
             self.game.set_difficulty(difficulty)
 
@@ -75,6 +63,17 @@ class App:
 
         if scene == "game":
             self.game.update_ui()
+
+    # =====================
+    # FULLSCREEN
+    # =====================
+    def toggle_fullscreen(self, event=None):
+        self.fullscreen = not self.fullscreen
+        self.root.attributes("-fullscreen", self.fullscreen)
+
+    def exit_fullscreen(self, event=None):
+        self.fullscreen = False
+        self.root.attributes("-fullscreen", False)
 
 
 # ===== RUN =====

@@ -1,6 +1,6 @@
 # =====================
 # SPACE COLONY AI
-# FULL GAME + MENU + SAVE/LOAD + DIFFICULTY + SOUND
+# GAME SCENE
 # FIXED VERSION
 # =====================
 
@@ -9,49 +9,15 @@ from tkinter import messagebox
 import os
 import random
 import json
-import pygame
-from ui.menu_scene import MenuScene
-# =====================
-# SOUND SYSTEM
-# =====================
 
-try:
-    pygame.mixer.init()
-except:
-    print("Sound disabled")
-
-SOUND_VOLUME = 0.5
-SOUND_MUTED = False
-
-
-def set_volume(v):
-    global SOUND_VOLUME
-    SOUND_VOLUME = float(v)
-
-
-def toggle_mute():
-    global SOUND_MUTED
-    SOUND_MUTED = not SOUND_MUTED
-
-
-def play_sound(name):
-
-    if SOUND_MUTED:
-        return
-
-    try:
-
-        path = f"assets/{name}.wav"
-
-        if os.path.exists(path):
-
-            sound = pygame.mixer.Sound(path)
-            sound.set_volume(SOUND_VOLUME)
-            sound.play()
-
-    except:
-        pass
-
+from audio import (
+    play_sound,
+    play_music,
+    stop_music,
+    set_volume,
+    toggle_mute,
+    SOUND_VOLUME
+)
 
 # =====================
 # SAVE SYSTEM
@@ -171,7 +137,6 @@ EVENTS = [
     ("scientist", "Scientist breakthrough", {"energy": 20}),
 ]
 
-
 # =====================
 # STATE
 # =====================
@@ -219,7 +184,6 @@ class GameState:
         ]
 
         self.map[2][2] = Cell("H", 1)
-
 
 # =====================
 # ENGINE
@@ -287,7 +251,6 @@ class GameEngine:
 
         s = self.state
 
-        # production
         for row in s.map:
             for c in row:
 
@@ -297,7 +260,6 @@ class GameEngine:
 
                     s.res[prod] += 5 + c.l * 3
 
-        # consume
         pop = s.population
         mult = s.diff_mult
 
@@ -305,56 +267,13 @@ class GameEngine:
         s.res["water"] -= int(pop * mult)
         s.res["oxygen"] -= int(pop * mult)
 
-        # growth
         if s.res["oxygen"] > 50:
             s.population += 1
 
-        # random event
         if random.random() < 0.35:
             self.apply_event()
 
         s.turn += 1
-
-
-
-
-    def make_btn(self, text, color, cmd):
-
-        tk.Button(
-            self,
-            text=text,
-            font=("Segoe UI", 16, "bold"),
-            bg=color,
-            fg="white",
-            relief="flat",
-            activebackground=color,
-            cursor="hand2",
-            command=cmd
-        ).pack(
-            fill="x",
-            padx=250,
-            pady=12,
-            ipady=12
-        )
-
-    def new_game(self):
-
-        self.forget()
-
-        game = GameScene(self.master)
-
-        game.pack(fill="both", expand=True)
-
-    def continue_game(self):
-
-        self.forget()
-
-        game = GameScene(self.master)
-
-        game.pack(fill="both", expand=True)
-
-        game.load()
-
 
 # =====================
 # GAME
@@ -368,24 +287,19 @@ class GameScene(tk.Frame):
 
         self.master = master
         self.switch = switch
+
         self.state = GameState()
         self.engine = GameEngine(self.state)
 
         self.selected = None
         self.mode = "build"
 
-        # =====================
-        # LAYOUT
-        # =====================
+        
 
         self.grid_columnconfigure(0, weight=4)
         self.grid_columnconfigure(1, weight=1)
 
         self.grid_rowconfigure(0, weight=1)
-
-        # =====================
-        # LEFT
-        # =====================
 
         self.left = tk.Frame(self, bg="#0b1220")
 
@@ -394,8 +308,6 @@ class GameScene(tk.Frame):
             column=0,
             sticky="nsew"
         )
-
-        # TOP BAR
 
         self.topbar = tk.Frame(
             self.left,
@@ -429,8 +341,6 @@ class GameScene(tk.Frame):
             padx=10
         )
 
-        # HUD
-
         self.hud = tk.Label(
             self.left,
             bg="#0f172a",
@@ -449,10 +359,6 @@ class GameScene(tk.Frame):
         )
 
         self.event_label.pack(pady=5)
-
-        # =====================
-        # GRID
-        # =====================
 
         self.grid_frame = tk.Frame(
             self.left,
@@ -503,10 +409,6 @@ class GameScene(tk.Frame):
 
             self.buttons.append(row)
 
-        # =====================
-        # RIGHT PANEL
-        # =====================
-
         self.right = tk.Frame(
             self,
             bg="#0f172a",
@@ -529,8 +431,6 @@ class GameScene(tk.Frame):
             font=("Segoe UI", 16, "bold")
         ).pack(pady=12)
 
-        # BUILD BUTTONS
-
         for k in BUILD:
 
             icon, cost, prod, color = BUILD[k]
@@ -550,8 +450,6 @@ class GameScene(tk.Frame):
                 pady=4,
                 ipady=8
             )
-
-        # ACTIONS
 
         tk.Button(
             self.right,
@@ -582,8 +480,6 @@ class GameScene(tk.Frame):
             ipady=10
         )
 
-        # SAVE
-
         tk.Button(
             self.right,
             text=f"💾 {t('save')}",
@@ -595,8 +491,6 @@ class GameScene(tk.Frame):
             text=f"📂 {t('load')}",
             command=self.load
         ).pack(fill="x", padx=12, pady=4)
-
-        # DIFFICULTY
 
         tk.Label(
             self.right,
@@ -623,8 +517,6 @@ class GameScene(tk.Frame):
             text=t("hard"),
             command=lambda: self.set_difficulty("hard")
         ).pack(fill="x", padx=12, pady=2)
-
-        # SOUND
 
         tk.Label(
             self.right,
@@ -653,8 +545,6 @@ class GameScene(tk.Frame):
             command=toggle_mute
         ).pack(fill="x", padx=12, pady=5)
 
-        # MENU
-
         tk.Button(
             self.right,
             text=f"🏠 {t('menu')}",
@@ -669,8 +559,6 @@ class GameScene(tk.Frame):
             ipady=8
         )
 
-        # KEYBOARD
-
         self.master.bind("<Return>", lambda e: self.next_turn())
         self.master.bind("s", lambda e: self.select("S"))
         self.master.bind("w", lambda e: self.select("W"))
@@ -679,11 +567,6 @@ class GameScene(tk.Frame):
 
         self.update_ui()
 
-    # =====================
-    # FUNCTIONS
-    # =====================
-
-    
     def back_to_menu(self):
 
         play_sound("click")
@@ -883,5 +766,3 @@ class GameScene(tk.Frame):
                     text=text,
                     bg=color
                 )
-
-

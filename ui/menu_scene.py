@@ -1,10 +1,12 @@
 import tkinter as tk
 from localization.lang import LANG
+from audio import play_music, play_sound, toggle_mute, set_volume
 
 
 class MenuScene(tk.Frame):
     def __init__(self, master, switch):
         super().__init__(master)
+
         self.master = master
         self.switch = switch
 
@@ -98,13 +100,27 @@ class MenuScene(tk.Frame):
         lang_frame = tk.Frame(self.container, bg="#020617")
         lang_frame.pack(pady=15)
 
-        tk.Button(lang_frame, text="EN", command=lambda: self.set_lang("en"),
-                  bg="#1e293b", fg="white", width=5).pack(side="left", padx=5)
+        tk.Button(
+            lang_frame,
+            text="EN",
+            command=lambda: self.set_lang("en"),
+            bg="#1e293b",
+            fg="white",
+            width=5
+        ).pack(side="left", padx=5)
 
-        tk.Button(lang_frame, text="UA", command=lambda: self.set_lang("uk"),
-                  bg="#1e293b", fg="white", width=5).pack(side="left", padx=5)
+        tk.Button(
+            lang_frame,
+            text="UA",
+            command=lambda: self.set_lang("uk"),
+            bg="#1e293b",
+            fg="white",
+            width=5
+        ).pack(side="left", padx=5)
 
         self.refresh()
+
+
 
     # =====================
     # LANGUAGE CHANGE
@@ -113,13 +129,12 @@ class MenuScene(tk.Frame):
         LANG.set(lang)
         self.refresh()
 
-        # 🔥 важливо: оновити гру якщо вона існує
         if hasattr(self.master, "game") and self.master.game:
             if hasattr(self.master.game, "refresh"):
                 self.master.game.refresh()
 
     # =====================
-    # FULL UI REFRESH (FIX)
+    # UI REFRESH
     # =====================
     def refresh(self):
         t = LANG.t
