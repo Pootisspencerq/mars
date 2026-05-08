@@ -10,7 +10,7 @@ import os
 import random
 import json
 import pygame
-
+from ui.menu_scene import MenuScene
 # =====================
 # SOUND SYSTEM
 # =====================
@@ -316,47 +316,7 @@ class GameEngine:
         s.turn += 1
 
 
-# =====================
-# MENU
-# =====================
 
-class MenuScene(tk.Frame):
-
-    def __init__(self, master):
-
-        super().__init__(master, bg="#0b1220")
-
-        self.master = master
-
-        self.pack(fill="both", expand=True)
-
-        title = tk.Label(
-            self,
-            text="🚀 SPACE COLONY AI",
-            font=("Segoe UI", 30, "bold"),
-            bg="#0b1220",
-            fg="white"
-        )
-
-        title.pack(pady=50)
-
-        self.make_btn(
-            "▶ NEW GAME",
-            "#2563eb",
-            self.new_game
-        )
-
-        self.make_btn(
-            "💾 CONTINUE",
-            "#059669",
-            self.continue_game
-        )
-
-        self.make_btn(
-            "❌ EXIT",
-            "#dc2626",
-            self.master.destroy
-        )
 
     def make_btn(self, text, color, cmd):
 
@@ -379,7 +339,7 @@ class MenuScene(tk.Frame):
 
     def new_game(self):
 
-        self.destroy()
+        self.forget()
 
         game = GameScene(self.master)
 
@@ -387,7 +347,7 @@ class MenuScene(tk.Frame):
 
     def continue_game(self):
 
-        self.destroy()
+        self.forget()
 
         game = GameScene(self.master)
 
@@ -402,12 +362,12 @@ class MenuScene(tk.Frame):
 
 class GameScene(tk.Frame):
 
-    def __init__(self, master):
+    def __init__(self, master, switch):
 
         super().__init__(master, bg="#0b1220")
 
         self.master = master
-
+        self.switch = switch
         self.state = GameState()
         self.engine = GameEngine(self.state)
 
@@ -723,11 +683,18 @@ class GameScene(tk.Frame):
     # FUNCTIONS
     # =====================
 
+    
     def back_to_menu(self):
 
-        self.destroy()
+        play_sound("click")
 
-        MenuScene(self.master)
+        self.master.unbind("<Return>")
+        self.master.unbind("s")
+        self.master.unbind("w")
+        self.master.unbind("o")
+        self.master.unbind("m")
+
+        self.switch("menu")
 
     def change_language(self):
 

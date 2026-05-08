@@ -23,11 +23,11 @@ class App:
 
         # ===== SCENES =====
         self.menu = MenuScene(root, self.switch)
-        self.game = GameScene(root)
+        self.game = GameScene(root, self.switch)
         self.cutscene = Cutscene(root, self.switch)
 
         root.game = self.game
-
+        root.switch = self.switch
         self.current = None
 
         # старт з катсцени
@@ -44,28 +44,37 @@ class App:
 
     # ===== SWITCH =====
     def switch(self, scene, fresh=False, difficulty="normal"):
+
         if self.current:
             self.current.pack_forget()
 
         if scene == "cutscene":
+
             self.current = self.cutscene
 
         elif scene == "menu":
+
             self.current = self.menu
 
-        else:
+        elif scene == "game":
+
+            if fresh or not hasattr(self, "game"):
+
+                self.game = GameScene(self.root, self.switch)
+                self.root.game = self.game
+
             self.current = self.game
 
             if fresh:
                 STATE.reset()
                 self.game.state.reset()
-                self.game.set_difficulty(difficulty)
 
-            self.current.pack(fill="both", expand=True)
-            self.game.update_ui()
-            return
+            self.game.set_difficulty(difficulty)
 
         self.current.pack(fill="both", expand=True)
+
+        if scene == "game":
+            self.game.update_ui()
 
 
 # ===== RUN =====
