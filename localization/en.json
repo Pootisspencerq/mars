@@ -4,7 +4,11 @@
     "continue": "Continue",
     "exit": "Exit",
 
+    "actions": "Actions",
+
     "turn": "Next Turn",
+    "turn_short": "Turn",
+
     "menu": "Menu",
 
     "win": "You survived!",
@@ -12,8 +16,25 @@
 
     "save": "Save",
     "load": "Load",
+
     "saved": "Game saved",
     "loaded": "Game loaded",
+
+    "difficulty": "Difficulty",
+    "easy": "Easy",
+    "normal": "Normal",
+    "hard": "Hard",
+
+    "sound": "Sound",
+    "mute": "Mute",
+
+    "help": "Help",
+    "help_title": "Game Help",
+
+    "event": "Event",
+    "no_event": "None",
+
+    "next": "Next",
 
     "build_solar": "Solar",
     "build_water": "Water",
@@ -22,12 +43,11 @@
 
     "upgrade": "Upgrade",
 
-    "energy": "E",
-    "water": "W",
-    "oxygen": "O",
-    "materials": "M",
-    "population": "Pop",
-    "turn_short": "Turn",
+    "energy": "Energy",
+    "water": "Water",
+    "oxygen": "Oxygen",
+    "materials": "Materials",
+    "population": "Population",
 
     "err_occupied": "Cell occupied",
     "err_materials": "Not enough materials",
@@ -38,5 +58,7 @@
 
     "event_storm": "⚡ Solar storm!",
     "event_meteor": "☄️ Meteor strike!",
-    "event_bonus": "🎁 Found water!"
+    "event_bonus": "🎁 Found water!",
+
+    "help_text": "🚀 SPACE COLONY AI\n\n🎯 Goal:\nBuild a stable colony and survive 30 turns.\n\n📦 Resources:\n⚡ Energy\n💧 Water\n🌿 Oxygen\n⛏ Materials\n\n🏗 Buildings:\n☀️ Solar Station\n💧 Water Extractor\n🌿 Oxygen Farm\n⛏ Mine\n\n⬆ Upgrades:\nIncrease building level and production.\n\n🎲 Events:\nMeteor strikes\nDust storms\nScientific breakthroughs\n\n⌨ Hotkeys:\nS = Solar\nW = Water\nO = Oxygen\nM = Mine\nENTER = Next Turn"
 }

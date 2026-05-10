@@ -1,10 +1,15 @@
 import tkinter as tk
-from localization.lang import LANG
+from localization.lang import (
+    t,
+    set_lang
+)
 from audio import play_music, play_sound, toggle_mute, set_volume
 
 
 class MenuScene(tk.Frame):
+
     def __init__(self, master, switch):
+
         super().__init__(master)
 
         self.master = master
@@ -15,137 +20,268 @@ class MenuScene(tk.Frame):
         # =====================
         # CENTER CONTAINER
         # =====================
-        self.container = tk.Frame(self, bg="#020617")
-        self.container.place(relx=0.5, rely=0.5, anchor="center")
+        self.container = tk.Frame(
+            self,
+            bg="#020617"
+        )
+
+        self.container.place(
+            relx=0.5,
+            rely=0.5,
+            anchor="center"
+        )
 
         # =====================
         # TITLE
         # =====================
         self.title = tk.Label(
             self.container,
+            text="",
             font=("Segoe UI", 28, "bold"),
             fg="white",
             bg="#020617"
         )
-        self.title.pack(pady=(0, 20))
+
+        self.title.pack(
+            pady=(0, 20)
+        )
 
         # =====================
-        # DIFFICULTY
+        # DIFFICULTY CARD
         # =====================
-        diff_card = tk.Frame(self.container, bg="#0f172a", padx=20, pady=15)
-        diff_card.pack(pady=10)
+        self.diff_card = tk.Frame(
+            self.container,
+            bg="#0f172a",
+            padx=20,
+            pady=15
+        )
 
-        self.diff_var = tk.StringVar(value="normal")
+        self.diff_card.pack(
+            pady=10,
+            fill="x"
+        )
+
+        self.diff_var = tk.StringVar(
+            value="normal"
+        )
 
         self.diff_label = tk.Label(
-            diff_card,
+            self.diff_card,
+            text="",
             fg="white",
             bg="#0f172a",
             font=("Segoe UI", 12, "bold")
         )
-        self.diff_label.pack(anchor="w", pady=(0, 10))
 
-        def radio(text, value):
+        self.diff_label.pack(
+            anchor="w",
+            pady=(0, 10)
+        )
+
+        # =====================
+        # RADIO STYLE
+        # =====================
+        def radio(value):
+
             return tk.Radiobutton(
-                diff_card,
-                text=text,
+                self.diff_card,
+                text="",
                 variable=self.diff_var,
                 value=value,
                 indicatoron=0,
-                width=20,
-                pady=6,
-                font=("Segoe UI", 11),
+                width=22,
+                pady=8,
+                font=("Segoe UI", 11, "bold"),
                 bg="#1e293b",
                 fg="white",
                 selectcolor="#334155",
                 activebackground="#334155",
-                relief="flat"
+                activeforeground="white",
+                relief="flat",
+                cursor="hand2"
             )
 
-        self.rb_easy = radio("", "easy")
-        self.rb_normal = radio("", "normal")
-        self.rb_hard = radio("", "hard")
+        self.rb_easy = radio("easy")
+        self.rb_normal = radio("normal")
+        self.rb_hard = radio("hard")
 
-        self.rb_easy.pack(pady=3)
-        self.rb_normal.pack(pady=3)
-        self.rb_hard.pack(pady=3)
+        self.rb_easy.pack(
+            pady=3,
+            fill="x"
+        )
+
+        self.rb_normal.pack(
+            pady=3,
+            fill="x"
+        )
+
+        self.rb_hard.pack(
+            pady=3,
+            fill="x"
+        )
 
         # =====================
-        # BUTTONS
+        # BUTTON STYLE
         # =====================
-        def btn(text, cmd, color):
+        def btn(cmd, color):
+
             return tk.Button(
                 self.container,
-                text=text,
+                text="",
                 command=cmd,
                 font=("Segoe UI", 13, "bold"),
                 bg=color,
                 fg="white",
                 activebackground=color,
+                activeforeground="white",
                 relief="flat",
                 padx=20,
-                pady=10,
+                pady=12,
                 cursor="hand2"
             )
 
-        self.btn_new = btn("", lambda: self.switch("game", True, self.diff_var.get()), "#2563eb")
-        self.btn_new.pack(pady=8, fill="x")
+        # =====================
+        # NEW GAME
+        # =====================
+        self.btn_new = btn(
+            lambda: self.switch(
+                "game",
+                True,
+                self.diff_var.get()
+            ),
+            "#2563eb"
+        )
 
-        self.btn_continue = btn("", lambda: self.switch("game", False, self.diff_var.get()), "#475569")
-        self.btn_continue.pack(pady=5, fill="x")
+        self.btn_new.pack(
+            pady=(15, 8),
+            fill="x"
+        )
+
+        # =====================
+        # CONTINUE
+        # =====================
+        self.btn_continue = btn(
+            lambda: self.switch(
+                "game",
+                False,
+                self.diff_var.get()
+            ),
+            "#475569"
+        )
+
+        self.btn_continue.pack(
+            pady=5,
+            fill="x"
+        )
 
         # =====================
         # LANGUAGE
         # =====================
-        lang_frame = tk.Frame(self.container, bg="#020617")
-        lang_frame.pack(pady=15)
+        lang_frame = tk.Frame(
+            self.container,
+            bg="#020617"
+        )
 
-        tk.Button(
+        lang_frame.pack(
+            pady=15
+        )
+
+        self.btn_en = tk.Button(
             lang_frame,
             text="EN",
-            command=lambda: self.set_lang("en"),
+            command=lambda: self.change_lang("en"),
             bg="#1e293b",
             fg="white",
-            width=5
-        ).pack(side="left", padx=5)
+            activebackground="#334155",
+            activeforeground="white",
+            relief="flat",
+            width=6,
+            pady=6,
+            cursor="hand2",
+            font=("Segoe UI", 10, "bold")
+        )
 
-        tk.Button(
+        self.btn_en.pack(
+            side="left",
+            padx=5
+        )
+
+        self.btn_ua = tk.Button(
             lang_frame,
             text="UA",
-            command=lambda: self.set_lang("uk"),
+            command=lambda: self.change_lang("ua"),
             bg="#1e293b",
             fg="white",
-            width=5
-        ).pack(side="left", padx=5)
+            activebackground="#334155",
+            activeforeground="white",
+            relief="flat",
+            width=6,
+            pady=6,
+            cursor="hand2",
+            font=("Segoe UI", 10, "bold")
+        )
 
+        self.btn_ua.pack(
+            side="left",
+            padx=5
+        )
+
+        # =====================
+        # INITIAL REFRESH
+        # =====================
         self.refresh()
-
-
 
     # =====================
     # LANGUAGE CHANGE
     # =====================
-    def set_lang(self, lang):
-        LANG.set(lang)
+    def change_lang(self, lang):
+
+        set_lang(lang)
+
+        play_sound("click")
+
         self.refresh()
 
-        if hasattr(self.master, "game") and self.master.game:
-            if hasattr(self.master.game, "refresh"):
-                self.master.game.refresh()
+        if hasattr(self.master, "game"):
+
+            if self.master.game:
+
+                if hasattr(self.master.game, "refresh"):
+
+                    self.master.game.refresh()
 
     # =====================
-    # UI REFRESH
+    # REFRESH UI
     # =====================
     def refresh(self):
-        t = LANG.t
 
-        self.title.config(text=t("title"))
+        self.title.config(
+            text=t("title")
+        )
 
-        self.btn_new.config(text=t("new_game"))
-        self.btn_continue.config(text=t("continue"))
+        self.btn_new.config(
+            text="🚀 " + t("new_game")
+        )
 
-        self.diff_label.config(text=t("difficulty"))
+        self.btn_continue.config(
+            text="📂 " + t("continue")
+        )
 
-        self.rb_easy.config(text="🟢 " + t("easy"))
-        self.rb_normal.config(text="🟡 " + t("normal"))
-        self.rb_hard.config(text="🔴 " + t("hard"))
+        self.diff_label.config(
+            text=t("difficulty")
+        )
+
+        self.rb_easy.config(
+            text="🟢 " + t("easy")
+        )
+
+        self.rb_normal.config(
+            text="🟡 " + t("normal")
+        )
+
+        self.rb_hard.config(
+            text="🔴 " + t("hard")
+        )
+
+        # force redraw
+        self.update_idletasks()

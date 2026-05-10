@@ -1,52 +1,47 @@
 import json
 import os
-import locale
+
+LANG = "en"
+
+BASE_DIR = os.path.dirname(__file__)
+
+with open(
+    os.path.join(BASE_DIR, "en.json"),
+    encoding="utf-8"
+) as f:
+    EN = json.load(f)
+
+with open(
+    os.path.join(BASE_DIR, "uk.json"),
+    encoding="utf-8"
+) as f:
+    UK = json.load(f)
+
+TEXT = {
+    "en": EN,
+    "ua": UK
+}
 
 
-class Lang:
-    def __init__(self):
-        self.current = self.detect_system_lang()
-        self.data = {}
-        self.load()
+def t(key):
 
-    # =====================
-    # AUTO DETECT
-    # =====================
-    def detect_system_lang(self):
-        sys_lang = locale.getdefaultlocale()[0]
-
-        if sys_lang:
-            if sys_lang.startswith("uk"):
-                return "uk"
-            if sys_lang.startswith("ru"):
-                return "ua"
-        return "en"
-
-    # =====================
-    # LOAD JSON
-    # =====================
-    def load(self):
-        path = f"localization/{self.current}.json"
-
-        if os.path.exists(path):
-            with open(path, encoding="utf-8") as f:
-                self.data = json.load(f)
-        else:
-            self.data = {}
-
-    # =====================
-    # CHANGE LANGUAGE
-    # =====================
-    def set(self, lang):
-        self.current = lang
-        self.load()
-
-    # =====================
-    # GET TEXT
-    # =====================
-    def t(self, key):
-        return self.data.get(key, key)
+    return TEXT.get(LANG, {}).get(key, key)
 
 
-# 🔥 GLOBAL INSTANCE (ВАЖЛИВО)
-LANG = Lang()
+def set_lang(lang):
+
+    global LANG
+
+    LANG = lang
+
+
+def switch_lang():
+
+    global LANG
+
+    LANG = "ua" if LANG == "en" else "en"
+
+
+def get_lang():
+
+    return LANG
