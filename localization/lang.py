@@ -1,47 +1,50 @@
 import json
-import os
 
 LANG = "en"
+DATA = {}
 
-BASE_DIR = os.path.dirname(__file__)
+LISTENERS = []
 
-with open(
-    os.path.join(BASE_DIR, "en.json"),
-    encoding="utf-8"
-) as f:
-    EN = json.load(f)
 
-with open(
-    os.path.join(BASE_DIR, "uk.json"),
-    encoding="utf-8"
-) as f:
-    UK = json.load(f)
+def load_lang(lang):
+    global DATA, LANG
+    LANG = lang
 
-TEXT = {
-    "en": EN,
-    "ua": UK
-}
+    with open(f"localization/{lang}.json", "r", encoding="utf-8") as f:
+        DATA = json.load(f)
+
+    notify_listeners()
 
 
 def t(key):
-
-    return TEXT.get(LANG, {}).get(key, key)
-
-
-def set_lang(lang):
-
-    global LANG
-
-    LANG = lang
-
-
-def switch_lang():
-
-    global LANG
-
-    LANG = "ua" if LANG == "en" else "en"
+    return DATA.get(key, key)
 
 
 def get_lang():
-
     return LANG
+
+
+def set_lang(lang):
+    load_lang(lang)
+
+
+# =====================
+# LIVE SYSTEM
+# =====================
+
+def register_listener(callback):
+    if callback not in LISTENERS:
+        LISTENERS.append(callback)
+
+
+def unregister_listener(callback):
+    if callback in LISTENERS:
+        LISTENERS.remove(callback)
+
+
+def notify_listeners():
+    for cb in LISTENERS:
+        try:
+            cb()
+        except:
+            pass

@@ -1,9 +1,14 @@
 import tkinter as tk
+
 from localization.lang import (
     t,
     set_lang
 )
-from audio import play_music, play_sound, toggle_mute, set_volume
+
+from audio import (
+    play_music,
+    play_sound
+)
 
 
 class MenuScene(tk.Frame):
@@ -17,9 +22,15 @@ class MenuScene(tk.Frame):
 
         self.configure(bg="#020617")
 
-        # =====================
-        # CENTER CONTAINER
-        # =====================
+        
+
+        
+
+        play_music("menu")
+
+
+        
+
         self.container = tk.Frame(
             self,
             bg="#020617"
@@ -31,24 +42,26 @@ class MenuScene(tk.Frame):
             anchor="center"
         )
 
-        # =====================
-        # TITLE
-        # =====================
+        
+      
+        
+
         self.title = tk.Label(
             self.container,
             text="",
-            font=("Segoe UI", 28, "bold"),
+            font=("Segoe UI", 30, "bold"),
             fg="white",
             bg="#020617"
         )
 
         self.title.pack(
-            pady=(0, 20)
+            pady=(0, 25)
         )
 
-        # =====================
-        # DIFFICULTY CARD
-        # =====================
+        
+      
+        
+
         self.diff_card = tk.Frame(
             self.container,
             bg="#0f172a",
@@ -70,7 +83,7 @@ class MenuScene(tk.Frame):
             text="",
             fg="white",
             bg="#0f172a",
-            font=("Segoe UI", 12, "bold")
+            font=("Segoe UI", 13, "bold")
         )
 
         self.diff_label.pack(
@@ -78,9 +91,10 @@ class MenuScene(tk.Frame):
             pady=(0, 10)
         )
 
-        # =====================
-        # RADIO STYLE
-        # =====================
+        
+      
+        
+
         def radio(value):
 
             return tk.Radiobutton(
@@ -89,8 +103,8 @@ class MenuScene(tk.Frame):
                 variable=self.diff_var,
                 value=value,
                 indicatoron=0,
-                width=22,
-                pady=8,
+                width=24,
+                pady=10,
                 font=("Segoe UI", 11, "bold"),
                 bg="#1e293b",
                 fg="white",
@@ -120,15 +134,16 @@ class MenuScene(tk.Frame):
             fill="x"
         )
 
-        # =====================
-        # BUTTON STYLE
-        # =====================
-        def btn(cmd, color):
+        
+     
+        
+
+        def btn(command, color):
 
             return tk.Button(
                 self.container,
                 text="",
-                command=cmd,
+                command=command,
                 font=("Segoe UI", 13, "bold"),
                 bg=color,
                 fg="white",
@@ -140,15 +155,12 @@ class MenuScene(tk.Frame):
                 cursor="hand2"
             )
 
-        # =====================
-        # NEW GAME
-        # =====================
+        
+        
+        
+
         self.btn_new = btn(
-            lambda: self.switch(
-                "game",
-                True,
-                self.diff_var.get()
-            ),
+            lambda: self.start_new_game(),
             "#2563eb"
         )
 
@@ -157,15 +169,9 @@ class MenuScene(tk.Frame):
             fill="x"
         )
 
-        # =====================
-        # CONTINUE
-        # =====================
+
         self.btn_continue = btn(
-            lambda: self.switch(
-                "game",
-                False,
-                self.diff_var.get()
-            ),
+            lambda: self.continue_game(),
             "#475569"
         )
 
@@ -174,16 +180,36 @@ class MenuScene(tk.Frame):
             fill="x"
         )
 
-        # =====================
-        # LANGUAGE
-        # =====================
+
+        self.btn_settings = btn(
+            lambda: self.switch("settings"),
+            "#7c3aed"
+        )
+
+        self.btn_settings.pack(
+            pady=5,
+            fill="x"
+        )
+
+
+
+        self.btn_exit = btn(
+            self.exit_game,
+            "#dc2626"
+        )
+
+        self.btn_exit.pack(
+            pady=(5, 0),
+            fill="x"
+        )
+
         lang_frame = tk.Frame(
             self.container,
             bg="#020617"
         )
 
         lang_frame.pack(
-            pady=15
+            pady=18
         )
 
         self.btn_en = tk.Button(
@@ -195,8 +221,8 @@ class MenuScene(tk.Frame):
             activebackground="#334155",
             activeforeground="white",
             relief="flat",
-            width=6,
-            pady=6,
+            width=7,
+            pady=7,
             cursor="hand2",
             font=("Segoe UI", 10, "bold")
         )
@@ -215,8 +241,8 @@ class MenuScene(tk.Frame):
             activebackground="#334155",
             activeforeground="white",
             relief="flat",
-            width=6,
-            pady=6,
+            width=7,
+            pady=7,
             cursor="hand2",
             font=("Segoe UI", 10, "bold")
         )
@@ -226,14 +252,41 @@ class MenuScene(tk.Frame):
             padx=5
         )
 
-        # =====================
-        # INITIAL REFRESH
-        # =====================
+
+
         self.refresh()
 
-    # =====================
-    # LANGUAGE CHANGE
-    # =====================
+
+
+    def start_new_game(self):
+
+        play_sound("click")
+
+        self.switch(
+            "game",
+            True,
+            self.diff_var.get()
+        )
+
+    def continue_game(self):
+
+        play_sound("click")
+
+        self.switch(
+            "game",
+            False,
+            self.diff_var.get()
+        )
+
+
+    def exit_game(self):
+
+        play_sound("click")
+
+        self.master.destroy()
+
+
+
     def change_lang(self, lang):
 
         set_lang(lang)
@@ -250,9 +303,8 @@ class MenuScene(tk.Frame):
 
                     self.master.game.refresh()
 
-    # =====================
-    # REFRESH UI
-    # =====================
+
+
     def refresh(self):
 
         self.title.config(
@@ -265,6 +317,14 @@ class MenuScene(tk.Frame):
 
         self.btn_continue.config(
             text="📂 " + t("continue")
+        )
+
+        self.btn_settings.config(
+            text="⚙ " + t("settings")
+        )
+
+        self.btn_exit.config(
+            text="❌ " + t("exit")
         )
 
         self.diff_label.config(
@@ -283,5 +343,4 @@ class MenuScene(tk.Frame):
             text="🔴 " + t("hard")
         )
 
-        # force redraw
         self.update_idletasks()

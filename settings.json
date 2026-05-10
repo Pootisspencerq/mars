@@ -1,0 +1,13 @@
+{
+    "language": "ua",
+    "volume": 0.5,
+    "mute": false,
+    "difficulty": "normal",
+    "fullscreen": false,
+    "animations": true,
+    "show_fps": false,
+    "custom_music": "",
+    "custom_build_sound": "",
+    "custom_click_sound": "",
+    "custom_event_sound": ""
+}

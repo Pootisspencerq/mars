@@ -1,6 +1,8 @@
 import tkinter as tk
+import cv2
 from PIL import Image, ImageTk
 import os
+
 
 class Cutscene(tk.Frame):
     def __init__(self, master, switch):
@@ -9,7 +11,7 @@ class Cutscene(tk.Frame):
         self.switch = switch
         self.configure(bg="black")
 
-        # ===== IMAGE =====
+        # ===== IMAGE LABEL =====
         self.label = tk.Label(self, bg="black")
         self.label.pack(fill="both", expand=True)
 
@@ -18,40 +20,25 @@ class Cutscene(tk.Frame):
             self,
             text="",
             fg="white",
-            bg="#000000",
-            font=("Segoe UI", 16),
-            wraplength=1000,
-            justify="center"
+            bg="black",
+            font=("Segoe UI", 16)
         )
         self.text.place(relx=0.5, rely=0.85, anchor="center")
 
-        # ===== SKIP BUTTON =====
-        self.skip_btn = tk.Button(
-            self,
-            text="Skip ▶",
-            command=self.skip,
-            bg="#111",
-            fg="white"
-        )
-        self.skip_btn.place(relx=0.95, rely=0.95, anchor="se")
+        # ===== SKIP =====
+        tk.Button(self, text="Skip ▶", command=self.skip, bg="#111", fg="white") \
+            .place(relx=0.95, rely=0.95, anchor="se")
 
-        # ===== LOAD FRAMES =====
-        self.frames = []
-        self.index = 0
+        # ===== VIDEO =====
+        self.video_path = os.path.join("assets", "cutscene.mp4")
 
-        folder = "assets/cutscene"
+        if not os.path.exists(self.video_path):
+            self.text.config(text="No cutscene.mp4 found in assets/")
+            self.after(2000, self.skip)
+            return
 
-        if os.path.exists(folder):
-            for f in sorted(os.listdir(folder)):
-                if f.endswith(".png") or f.endswith(".jpg"):
-                    try:
-                        img = Image.open(os.path.join(folder, f))
-                        img = img.resize((1280, 800))
-                        self.frames.append(ImageTk.PhotoImage(img))
-                    except:
-                        pass
+        self.cap = cv2.VideoCapture(self.video_path)
 
-        # ===== STORY =====
         self.story = [
             "Year 2095...",
             "Humanity is running out of resources...",
@@ -60,35 +47,44 @@ class Cutscene(tk.Frame):
             "Survive..."
         ]
 
-        # ===== якщо нема кадрів =====
-        if not self.frames:
-            self.text.config(text="No cutscene files found")
-            self.after(2000, self.skip)
-            return
+        self.frame_index = 0
+        self.story_index = 0
 
-        # старт
+        self.fps = self.cap.get(cv2.CAP_PROP_FPS)
+        self.delay = int(1000 / self.fps) if self.fps > 0 else 33
+
         self.play()
 
     def play(self):
-        max_len = max(len(self.frames), len(self.story))
+        ret, frame = self.cap.read()
 
-        # кінець
-        if self.index >= max_len:
+        if not ret:
+            self.cap.release()
             self.after(500, self.skip)
             return
 
-        # IMAGE
-        if self.index < len(self.frames):
-            frame = self.frames[self.index]
-            if frame:
-                self.label.config(image=frame)
+        # BGR -> RGB
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-        # TEXT
-        if self.index < len(self.story):
-            self.text.config(text=self.story[self.index])
+        img = Image.fromarray(frame)
+        img = img.resize((1280, 800))
+        photo = ImageTk.PhotoImage(img)
 
-        self.index += 1
-        self.after(2000, self.play)
+        self.label.config(image=photo)
+        self.label.image = photo
+
+        # текст міняється по часу
+        if self.frame_index % (int(self.fps) * 2) == 0:
+            if self.story_index < len(self.story):
+                self.text.config(text=self.story[self.story_index])
+                self.story_index += 1
+
+        self.frame_index += 1
+        self.after(self.delay, self.play)
 
     def skip(self):
+        try:
+            self.cap.release()
+        except:
+            pass
         self.switch("menu")

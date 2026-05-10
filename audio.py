@@ -1,5 +1,6 @@
 import pygame
 import os
+from settings import load_settings
 
 try:
     pygame.mixer.init()
@@ -11,6 +12,8 @@ SOUND_MUTED = False
 CURRENT_MUSIC = None
 
 
+
+
 def set_volume(v):
     global SOUND_VOLUME
 
@@ -20,6 +23,8 @@ def set_volume(v):
         pygame.mixer.music.set_volume(SOUND_VOLUME * 0.4)
     except:
         pass
+
+
 
 
 def toggle_mute():
@@ -36,13 +41,27 @@ def toggle_mute():
         pass
 
 
+
 def play_sound(name):
+    """Supports custom sounds from settings + fallback assets"""
 
     if SOUND_MUTED:
         return
 
     try:
-        path = f"assets/{name}.wav"
+        settings = load_settings()
+
+        mapping = {
+            "build": settings.get("custom_build_sound"),
+            "click": settings.get("custom_click_sound"),
+            "event": settings.get("custom_event_sound")
+        }
+
+        path = mapping.get(name)
+
+        # fallback default
+        if not path or not os.path.exists(path):
+            path = f"assets/{name}.wav"
 
         if os.path.exists(path):
 
@@ -54,31 +73,33 @@ def play_sound(name):
         print("Sound error:", e)
 
 
-def play_music(track):
 
+
+def play_music(track="menu"):
     global CURRENT_MUSIC
 
     if SOUND_MUTED:
         return
 
-    music_map = {
-        "menu": "assets/menu_music.mp3",
-        "game": "assets/game_music.mp3"
-    }
+    settings = load_settings()
 
-    path = music_map.get(track)
+    custom_music = settings.get("custom_music", "")
 
-    if not path:
-        return
+    if custom_music and os.path.exists(custom_music):
+        path = custom_music
+    else:
+        music_map = {
+            "menu": "assets/menu_music.mp3",
+            "game": "assets/game_music.mp3"
+        }
+        path = music_map.get(track)
 
-    if not os.path.exists(path):
-        print("Music file missing:", path)
+    if not path or not os.path.exists(path):
+        print("Music missing:", path)
         return
 
     try:
-        # 🔥 HARD RESET (важливо)
         pygame.mixer.music.stop()
-
         pygame.mixer.music.load(path)
         pygame.mixer.music.set_volume(SOUND_VOLUME * 0.4)
         pygame.mixer.music.play(-1)
@@ -89,8 +110,21 @@ def play_music(track):
         print("Music error:", e)
 
 
-def stop_music():
 
+
+def restart_music():
+    """Instant reload of music after settings change"""
+
+    try:
+        pygame.mixer.music.stop()
+        play_music("menu")
+    except:
+        pass
+
+
+
+
+def stop_music():
     global CURRENT_MUSIC
 
     CURRENT_MUSIC = None

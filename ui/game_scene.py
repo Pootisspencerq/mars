@@ -1,36 +1,34 @@
 # =====================
 # SPACE COLONY AI
-# FULL FIXED VERSION
+# GAME SCENE (SETTINGS REMOVED)
 # =====================
 
 import tkinter as tk
 from tkinter import messagebox
-import os
 import random
 import json
+import os
+import copy
 
 from audio import (
     play_sound,
     play_music,
-    stop_music,
-    set_volume,
-    toggle_mute,
-    SOUND_VOLUME
+    stop_music
 )
+from localization.lang import t, register_listener, unregister_listener, get_lang, set_lang
 
-from localization.lang import (
-    t,
-    switch_lang,
-    get_lang,
-    set_lang
+from constants import (
+    MAP_SIZE,
+    BUILD,
+    EVENTS
 )
-
-# =====================
-# SAVE SYSTEM
-# =====================
 
 SAVE_FILE = "save.json"
 
+
+# =====================
+# SAVE / LOAD
+# =====================
 
 def save_game(state, lang):
 
@@ -41,6 +39,7 @@ def save_game(state, lang):
         "last_event": state.last_event,
         "game_over": state.game_over,
         "diff_mult": state.diff_mult,
+        "difficulty_name": state.difficulty_name,
         "lang": lang,
         "map": [
             [(c.t, c.l) for c in row]
@@ -62,29 +61,8 @@ def load_game():
 
 
 # =====================
-# SETTINGS
-# =====================
-
-MAP_SIZE = 5
-
-BUILD = {
-    "S": ("☀️", 15, "energy", "#facc15"),
-    "W": ("💧", 20, "water", "#38bdf8"),
-    "O": ("🌿", 20, "oxygen", "#4ade80"),
-    "M": ("⛏️", 25, "materials", "#94a3b8")
-}
-
-EVENTS = [
-    ("calm", "Nothing happens", {}),
-    ("storm", "⚡ Solar storm!", {"energy": -20}),
-    ("meteor", "☄️ Meteor strike!", {"materials": -30}),
-    ("scientist", "🎁 Scientific breakthrough!", {"energy": 20}),
-]
-
-# =====================
 # STATE
 # =====================
-
 
 class Cell:
 
@@ -96,18 +74,18 @@ class Cell:
 
 class GameState:
 
-    def __init__(self):
-
-        self.diff_mult = 1.0
-        self.reset()
-
-    def set_difficulty(self, difficulty):
+    def __init__(self, difficulty="normal"):
 
         self.diff_mult = {
             "easy": 0.7,
             "normal": 1.0,
             "hard": 1.5
         }.get(difficulty, 1.0)
+
+        self.difficulty_name = difficulty
+
+        self.reset()
+
 
     def reset(self):
 
@@ -135,13 +113,12 @@ class GameState:
 # ENGINE
 # =====================
 
-
 class GameEngine:
 
+    
     def __init__(self, state):
-
         self.state = state
-
+        
     def apply_event(self):
 
         name, desc, effects = random.choice(EVENTS)
@@ -160,11 +137,27 @@ class GameEngine:
         c = self.state.map[x][y]
 
         if c.t != ".":
+
+            play_sound("error")
+
+            messagebox.showwarning(
+                "ERROR",
+                t("err_occupied")
+            )
+
             return False
 
         _, cost, _, _ = BUILD[b]
 
         if self.state.res["materials"] < cost:
+
+            play_sound("error")
+
+            messagebox.showwarning(
+                "ERROR",
+                t("err_materials")
+            )
+
             return False
 
         self.state.res["materials"] -= cost
@@ -180,11 +173,27 @@ class GameEngine:
         c = self.state.map[x][y]
 
         if c.t in [".", "H"]:
+
+            play_sound("error")
+
+            messagebox.showwarning(
+                "ERROR",
+                t("err_upgrade")
+            )
+
             return False
 
         cost = 10 * c.l
 
         if self.state.res["materials"] < cost:
+
+            play_sound("error")
+
+            messagebox.showwarning(
+                "ERROR",
+                t("err_materials")
+            )
+
             return False
 
         self.state.res["materials"] -= cost
@@ -199,7 +208,6 @@ class GameEngine:
 
         s = self.state
 
-        # Production
         for row in s.map:
             for c in row:
 
@@ -209,7 +217,6 @@ class GameEngine:
 
                     s.res[prod] += 5 + c.l * 3
 
-        # Consumption
         pop = s.population
         mult = s.diff_mult
 
@@ -217,7 +224,6 @@ class GameEngine:
         s.res["water"] -= int(pop * mult)
         s.res["oxygen"] -= int(pop * mult)
 
-        # Population growth
         if (
             s.res["oxygen"] > 50 and
             s.res["water"] > 50 and
@@ -225,7 +231,6 @@ class GameEngine:
         ):
             s.population += 1
 
-        # Random event
         if random.random() < 0.35:
             self.apply_event()
         else:
@@ -235,45 +240,52 @@ class GameEngine:
 
 
 # =====================
-# GAME
+# GAME SCENE
 # =====================
 
-
 class GameScene(tk.Frame):
+    def set_difficulty(self, difficulty):
+        self.state.difficulty_name = difficulty
 
-    def __init__(self, master, switch):
-
+        self.state.diff_mult = {
+            "easy": 0.7,
+            "normal": 1.0,
+            "hard": 1.5
+        }.get(difficulty, 1.0)
+    def refresh_texts(self):
+        self.title.config(text=t("title"))
+        self.actions_label.config(text=t("actions"))
+        self.upgrade_btn.config(text=f"⬆ {t('upgrade')}")
+        self.next_btn.config(text=f"⏭ {t('turn')}")
+        self.menu_btn.config(text=f"🏠 {t('menu')}")
+        self.save_btn.config(text=f"💾 {t('save')}")
+        self.load_btn.config(text=f"📂 {t('load')}")
+    def __init__(self, master, switch, difficulty="normal"):
+        register_listener(self.refresh_texts)
         super().__init__(master, bg="#0b1220")
 
         self.master = master
         self.switch = switch
 
-        self.state = GameState()
+        self.state = GameState(difficulty=difficulty if 'difficulty' in locals() else "normal")
         self.engine = GameEngine(self.state)
 
         self.selected = None
         self.mode = "build"
+
+        self.previous_state = None
 
         self.grid_columnconfigure(0, weight=4)
         self.grid_columnconfigure(1, weight=1)
 
         self.grid_rowconfigure(0, weight=1)
 
-        # =====================
         # LEFT
-        # =====================
 
         self.left = tk.Frame(self, bg="#0b1220")
+        self.left.grid(row=0, column=0, sticky="nsew")
 
-        self.left.grid(
-            row=0,
-            column=0,
-            sticky="nsew"
-        )
-
-        # =====================
         # TOPBAR
-        # =====================
 
         self.topbar = tk.Frame(
             self.left,
@@ -291,29 +303,19 @@ class GameScene(tk.Frame):
             font=("Segoe UI", 20, "bold")
         )
 
-        self.title.pack(
-            side="left",
-            padx=15,
-            pady=10
-        )
+        self.title.pack(side="left", padx=15, pady=10)
 
-        tk.Button(
+        self.diff_display = tk.Label(
             self.topbar,
-            text="🌐",
-            font=("Segoe UI", 12),
-            bg="#1e293b",
-            fg="white",
-            relief="flat",
-            cursor="hand2",
-            command=self.change_language
-        ).pack(
-            side="right",
-            padx=10
+            text="",
+            bg="#111827",
+            fg="#38bdf8",
+            font=("Segoe UI", 11, "bold")
         )
 
-        # =====================
+        self.diff_display.pack(side="left", padx=10)
+
         # HUD
-        # =====================
 
         self.hud = tk.Label(
             self.left,
@@ -334,9 +336,7 @@ class GameScene(tk.Frame):
 
         self.event_label.pack(pady=5)
 
-        # =====================
         # GRID
-        # =====================
 
         self.grid_frame = tk.Frame(
             self.left,
@@ -387,25 +387,16 @@ class GameScene(tk.Frame):
 
             self.buttons.append(row)
 
-        # =====================
-        # RIGHT PANEL
-        # =====================
+        # RIGHT
 
         self.right = tk.Frame(
             self,
             bg="#0f172a",
-            width=280
+            width=300
         )
 
-        self.right.grid(
-            row=0,
-            column=1,
-            sticky="nsew"
-        )
-
+        self.right.grid(row=0, column=1, sticky="nsew")
         self.right.grid_propagate(False)
-
-        # ACTIONS LABEL
 
         self.actions_label = tk.Label(
             self.right,
@@ -445,7 +436,7 @@ class GameScene(tk.Frame):
 
             self.build_buttons[k] = btn
 
-        # UPGRADE BUTTON
+        # UPGRADE
 
         self.upgrade_btn = tk.Button(
             self.right,
@@ -484,12 +475,11 @@ class GameScene(tk.Frame):
             ipady=10
         )
 
-        # SAVE LOAD
+        # SAVE / LOAD
 
         self.save_btn = tk.Button(
             self.right,
             text=f"💾 {t('save')}",
-            cursor="hand2",
             command=self.save
         )
 
@@ -498,99 +488,10 @@ class GameScene(tk.Frame):
         self.load_btn = tk.Button(
             self.right,
             text=f"📂 {t('load')}",
-            cursor="hand2",
             command=self.load
         )
 
         self.load_btn.pack(fill="x", padx=12, pady=4)
-
-        # DIFFICULTY
-
-        self.diff_label = tk.Label(
-            self.right,
-            text=t("difficulty"),
-            bg="#0f172a",
-            fg="white",
-            font=("Segoe UI", 12, "bold")
-        )
-
-        self.diff_label.pack(pady=10)
-
-        self.easy_btn = tk.Button(
-            self.right,
-            text=t("easy"),
-            command=lambda: self.set_difficulty("easy")
-        )
-
-        self.easy_btn.pack(fill="x", padx=12, pady=2)
-
-        self.normal_btn = tk.Button(
-            self.right,
-            text=t("normal"),
-            command=lambda: self.set_difficulty("normal")
-        )
-
-        self.normal_btn.pack(fill="x", padx=12, pady=2)
-
-        self.hard_btn = tk.Button(
-            self.right,
-            text=t("hard"),
-            command=lambda: self.set_difficulty("hard")
-        )
-
-        self.hard_btn.pack(fill="x", padx=12, pady=2)
-
-        # SOUND
-
-        self.sound_label = tk.Label(
-            self.right,
-            text=t("sound"),
-            bg="#0f172a",
-            fg="white",
-            font=("Segoe UI", 12, "bold")
-        )
-
-        self.sound_label.pack(pady=10)
-
-        self.vol = tk.Scale(
-            self.right,
-            from_=0,
-            to=1,
-            resolution=0.1,
-            orient="horizontal",
-            command=set_volume
-        )
-
-        self.vol.set(SOUND_VOLUME)
-
-        self.vol.pack(fill="x", padx=12)
-
-        self.mute_btn = tk.Button(
-            self.right,
-            text=t("mute"),
-            command=toggle_mute
-        )
-
-        self.mute_btn.pack(fill="x", padx=12, pady=5)
-
-        # HELP
-
-        self.help_btn = tk.Button(
-            self.right,
-            text=f"❓ {t('help')}",
-            bg="#2563eb",
-            fg="white",
-            relief="flat",
-            cursor="hand2",
-            command=self.show_help
-        )
-
-        self.help_btn.pack(
-            fill="x",
-            padx=12,
-            pady=5,
-            ipady=6
-        )
 
         # MENU
 
@@ -611,23 +512,8 @@ class GameScene(tk.Frame):
             ipady=8
         )
 
-        # =====================
-        # HOTKEYS
-        # =====================
-
-        self.master.bind("<Return>", lambda e: self.next_turn())
-        self.master.bind("s", lambda e: self.select("S"))
-        self.master.bind("w", lambda e: self.select("W"))
-        self.master.bind("o", lambda e: self.select("O"))
-        self.master.bind("m", lambda e: self.select("M"))
-
-        # =====================
-        # START
-        # =====================
-
         play_music("game")
 
-        self.animate_grid_intro()
         self.update_ui()
 
     # =====================
@@ -638,84 +524,9 @@ class GameScene(tk.Frame):
 
         play_sound("click")
 
-        self.master.unbind("<Return>")
-        self.master.unbind("s")
-        self.master.unbind("w")
-        self.master.unbind("o")
-        self.master.unbind("m")
-
         stop_music()
 
         self.switch("menu")
-
-    # =====================
-    # LANGUAGE
-    # =====================
-
-    def change_language(self):
-
-        switch_lang()
-
-        self.refresh()
-        self.update_ui()
-
-    def refresh(self):
-
-        self.title.config(text=t("title"))
-
-        self.actions_label.config(text=t("actions"))
-
-        self.upgrade_btn.config(text=f"⬆ {t('upgrade')}")
-        self.next_btn.config(text=f"⏭ {t('turn')}")
-
-        self.save_btn.config(text=f"💾 {t('save')}")
-        self.load_btn.config(text=f"📂 {t('load')}")
-
-        self.diff_label.config(text=t("difficulty"))
-
-        self.easy_btn.config(text=t("easy"))
-        self.normal_btn.config(text=t("normal"))
-        self.hard_btn.config(text=t("hard"))
-
-        self.sound_label.config(text=t("sound"))
-
-        self.mute_btn.config(text=t("mute"))
-
-        self.help_btn.config(text=f"❓ {t('help')}")
-        self.menu_btn.config(text=f"🏠 {t('menu')}")
-
-        # Build button text refresh
-
-        for k in BUILD:
-
-            icon, cost, prod, color = BUILD[k]
-
-            self.build_buttons[k].config(
-                text=f"{icon} {t(prod)} ({cost})"
-            )
-
-    # =====================
-    # HELP
-    # =====================
-
-    def show_help(self):
-
-        messagebox.showinfo(
-            t("help"),
-            t("help_text")
-        )
-
-    # =====================
-    # DIFFICULTY
-    # =====================
-
-    def set_difficulty(self, difficulty):
-
-        self.state.set_difficulty(difficulty)
-
-        play_sound("click")
-
-        self.update_ui()
 
     # =====================
     # SAVE / LOAD
@@ -751,6 +562,7 @@ class GameScene(tk.Frame):
         self.state.last_event = data["last_event"]
         self.state.game_over = data["game_over"]
         self.state.diff_mult = data["diff_mult"]
+        self.state.difficulty_name = data["difficulty_name"]
 
         set_lang(data.get("lang", "en"))
 
@@ -762,18 +574,12 @@ class GameScene(tk.Frame):
                 self.state.map[i][j].t = t2
                 self.state.map[i][j].l = l2
 
-        self.refresh()
         self.update_ui()
 
         play_sound("click")
 
-        messagebox.showinfo(
-            t("load"),
-            t("loaded")
-        )
-
     # =====================
-    # BUILD MODE
+    # BUILD
     # =====================
 
     def select(self, b):
@@ -790,52 +596,6 @@ class GameScene(tk.Frame):
         play_sound("click")
 
     # =====================
-    # ANIMATIONS
-    # =====================
-
-    def animate_build(self, x, y):
-
-        btn = self.buttons[x][y]
-
-        colors = [
-            "#ffffff",
-            "#93c5fd",
-            "#60a5fa",
-            "#2563eb"
-        ]
-
-        def step(index=0):
-
-            if index >= len(colors):
-                self.update_ui()
-                return
-
-            btn.config(bg=colors[index])
-
-            self.after(
-                70,
-                lambda: step(index + 1)
-            )
-
-        step()
-
-    def animate_grid_intro(self):
-
-        delay = 0
-
-        for i in range(MAP_SIZE):
-            for j in range(MAP_SIZE):
-
-                btn = self.buttons[i][j]
-
-                def show(b=btn):
-                    b.config(bg="#1f2937")
-
-                self.after(delay, show)
-
-                delay += 40
-
-    # =====================
     # GAMEPLAY
     # =====================
 
@@ -846,21 +606,11 @@ class GameScene(tk.Frame):
 
         if self.mode == "build" and self.selected:
 
-            ok = self.engine.build(x, y, self.selected)
-
-            if ok:
-                self.animate_build(x, y)
-            else:
-                play_sound("error")
+            self.engine.build(x, y, self.selected)
 
         elif self.mode == "upgrade":
 
-            ok = self.engine.upgrade(x, y)
-
-            if ok:
-                play_sound("upgrade")
-            else:
-                play_sound("error")
+            self.engine.upgrade(x, y)
 
         self.update_ui()
 
@@ -871,6 +621,10 @@ class GameScene(tk.Frame):
         self.check_game()
 
         self.update_ui()
+
+    # =====================
+    # GAME OVER
+    # =====================
 
     def check_game(self):
 
@@ -911,6 +665,16 @@ class GameScene(tk.Frame):
     def update_ui(self):
 
         r = self.state.res
+
+        diff_text = {
+            "easy": f"🟢 {t('easy')}",
+            "normal": f"🟡 {t('normal')}",
+            "hard": f"🔴 {t('hard')}"
+        }.get(self.state.difficulty_name, "Normal")
+
+        self.diff_display.config(
+            text=f"{t('difficulty')}: {diff_text}"
+        )
 
         self.hud.config(
             text=(
